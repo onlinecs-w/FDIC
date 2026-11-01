@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard - Manage Users</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+        body { background-color: #0b0b0c; color: #ffffff; padding: 20px; display: flex; justify-content: center; }
+        
+        .admin-container { width: 100%; max-width: 850px; }
+        
+        header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; border-bottom: 1px solid #222; padding-bottom: 16px; }
+        h1 { font-size: 24px; font-weight: 800; }
+        .logout-admin { background: #ff3b30; color: white; border: none; padding: 8px 16px; border-radius: 12px; font-weight: 700; cursor: pointer; }
+
+        .stats-row { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; margin-bottom: 24px; }
+        .stat-card { background: #1c1c1e; padding: 20px; border-radius: 16px; border: 1px solid #2c2c2e; }
+        .stat-card h3 { font-size: 13px; color: #8e8e93; margin-bottom: 6px; }
+        .stat-card .value { font-size: 28px; font-weight: 800; color: #00d632; }
+
+        .section-title { font-size: 14px; font-weight: 700; color: #8e8e93; letter-spacing: 0.8px; margin-bottom: 12px; text-transform: uppercase; }
+
+        .user-list { display: flex; flex-direction: column; gap: 12px; }
+        .user-card { background: #1c1c1e; border-radius: 16px; padding: 16px 20px; display: flex; justify-content: space-between; align-items: center; border: 1px solid #2c2c2e; flex-wrap: wrap; gap: 12px; }
+        
+        .user-info h4 { font-size: 16px; font-weight: 700; margin-bottom: 3px; }
+        .user-info p { font-size: 13px; color: #8e8e93; }
+        .user-balance { font-size: 18px; font-weight: 800; color: #ffffff; margin-top: 4px; }
+
+        .fund-action { display: flex; gap: 8px; align-items: center; }
+        .fund-input { width: 90px; padding: 10px; background: #121212; border: 1px solid #333; border-radius: 10px; color: white; font-weight: 700; font-size: 14px; outline: none; }
+        .fund-input:focus { border-color: #00d632; }
+        
+        .btn-fund { background: #00d632; color: #000; border: none; padding: 10px 14px; border-radius: 10px; font-weight: 700; cursor: pointer; font-size: 14px; }
+        .btn-fund:active { opacity: 0.8; }
+
+        .btn-deduct { background: #ff3b30; color: #ffffff; border: none; padding: 10px 14px; border-radius: 10px; font-weight: 700; cursor: pointer; font-size: 14px; }
+        .btn-deduct:active { opacity: 0.8; }
+
+        .empty-state { text-align: center; color: #666; padding: 40px; font-size: 15px; background: #1c1c1e; border-radius: 16px; }
+    </style>
+</head>
+<body>
+
+    <div class="admin-container">
+        <header>
+            <h1>Admin Control Panel</h1>
+            <button class="logout-admin" onclick="adminLogout()">Log Out</button>
+        </header>
+
+        <div class="stats-row">
+            <div class="stat-card">
+                <h3>Total Registered Users</h3>
+                <div class="value" id="total-users">0</div>
+            </div>
+            <div class="stat-card">
+                <h3>Total System Balances</h3>
+                <div class="value" id="total-balances">$0.00</div>
+            </div>
+        </div>
+
+        <div class="section-title">New & Active Users</div>
+        <div class="user-list" id="admin-user-list">
+            <!-- Populated dynamically -->
+        </div>
+    </div>
+
+    <script>
+        const formatFiat = (num) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(num);
+
+        function loadAdminData() {
+            let users = JSON.parse(localStorage.getItem('allAppUsers')) || [];
+
+            if (users.length === 0) {
+                const singleUser = localStorage.getItem('walletAppSession');
+                if (singleUser) {
+                    users = [JSON.parse(singleUser)];
+                }
+            }
+
+            const container = document.getElementById('admin-user-list');
+            container.innerHTML = '';
+
+            if (users.length === 0) {
+                container.innerHTML = `<div class="empty-state">No users signed up yet.</div>`;
+                document.getElementById('total-users').innerText = '0';
+                document.getElementById('total-balances').innerText = formatFiat(0);
+                return;
+            }
+
+            let totalBal = 0;
+            document.getElementById('total-users').innerText = users.length;
+
+            users.forEach((user, index) => {
+                totalBal += (user.cashBalance || 0);
+
+                const userCard = document.createElement('div');
+                userCard.className = 'user-card';
+                userCard.innerHTML = `
+                    <div class="user-info">
+                        <h4>${user.name || 'Unnamed User'}</h4>
+                        <p>${user.cashtag || '$cashtag'} &bull; ${user.email || 'No email provided'}</p>
+                        <div class="user-balance">${formatFiat(user.cashBalance || 0)}</div>
+                    </div>
+                    <div class="fund-action">
+                        <input type="number" class="fund-input" id="fund-val-${index}" placeholder="Amount" value="1000">
+                        <button class="btn-fund" onclick="modifyBalance(${index}, 'add')">Fund</button>
+                        <button class="btn-deduct" onclick="modifyBalance(${index}, 'deduct')">Deduct</button>
+                    </div>
+                `;
+                container.appendChild(userCard);
+            });
+
+            document.getElementById('total-balances').innerText = formatFiat(totalBal);
+        }
+
+        function modifyBalance(index, actionType) {
+            let users = JSON.parse(localStorage.getItem('allAppUsers')) || [];
+            if (users.length === 0) {
+                const singleUser = localStorage.getItem('walletAppSession');
+                if (singleUser) users = [JSON.parse(singleUser)];
+            }
+
+            const inputVal = parseFloat(document.getElementById(`fund-val-${index}`).value);
+            if (isNaN(inputVal) || inputVal <= 0) {
+                return alert("Please enter a valid amount.");
+            }
+
+            if (!users[index].history) users[index].history = [];
+
+            if (actionType === 'add') {
+                users[index].cashBalance = (users[index].cashBalance || 0) + inputVal;
+                
+                users[index].history.unshift({
+                    asset: 'Cash',
+                    title: 'Admin Fund Deposit',
+                    amountDisp: `+${formatFiat(inputVal)}`,
+                    subtitle: 'Direct Deposit from Admin',
+                    status: 'COMPLETED',
+                    action: 'Deposit',
+                    id: Date.now()
+                });
+
+                alert(`Successfully funded ${users[index].name} with ${formatFiat(inputVal)}!`);
+            } 
+            else if (actionType === 'deduct') {
+                const currentBal = users[index].cashBalance || 0;
+                if (inputVal > currentBal) {
+                    return alert(`Cannot deduct ${formatFiat(inputVal)}. User only has ${formatFiat(currentBal)} available.`);
+                }
+
+                users[index].cashBalance = currentBal - inputVal;
+
+                users[index].history.unshift({
+                    asset: 'Cash',
+                    title: 'Admin Fund Deduction',
+                    amountDisp: `-${formatFiat(inputVal)}`,
+                    subtitle: 'Deduction by Admin',
+                    status: 'COMPLETED',
+                    action: 'Deduction',
+                    id: Date.now()
+                });
+
+                alert(`Successfully deducted ${formatFiat(inputVal)} from ${users[index].name}!`);
+            }
+
+            // Save updates to storage
+            localStorage.setItem('allAppUsers', JSON.stringify(users));
+
+            // Sync with current active session if it matches this user
+            const currentSession = JSON.parse(localStorage.getItem('walletAppSession'));
+            if (currentSession && currentSession.email === users[index].email) {
+                localStorage.setItem('walletAppSession', JSON.stringify(users[index]));
+            }
+
+            loadAdminData();
+        }
+
+        function adminLogout() {
+            localStorage.removeItem('userToken');
+            window.location.href = 'login.html';
+        }
+
+        window.addEventListener('DOMContentLoaded', loadAdminData);
+    </script>
+</body>
+</html>
