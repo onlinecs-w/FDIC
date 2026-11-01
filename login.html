@@ -4,6 +4,11 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Money - Sign In</title>
+
+  <!-- FIREBASE CDN SCRIPTS -->
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+
   <style>
     /* Reset and Base Styles */
     * {
@@ -182,6 +187,20 @@
   </div>
 
   <script>
+    // --- FIREBASE INITIALIZATION ---
+    const firebaseConfig = {
+      apiKey: "AIzaSyCP7UIQW0v3GKQlr_tE3fg05aYHey_SlzQ",
+      authDomain: "onlinecs-w.firebaseapp.com",
+      projectId: "onlinecs-w",
+      storageBucket: "onlinecs-w.firebasestorage.app",
+      messagingSenderId: "761832733504",
+      appId: "1:761832733504:web:032d88f12de95bfad098a5",
+      measurementId: "G-8RE8WTR7EM"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+
     let isLoginMode = true;
 
     const tabSignin = document.getElementById('tab-signin');
@@ -230,59 +249,72 @@
       const name = nameInput.value.trim();
       let rawTag = cashtagInput.value.trim();
 
-      let users = JSON.parse(localStorage.getItem('allAppUsers')) || [];
-
       if (!isLoginMode) {
-        // --- SIGN UP FLOW ---
-        const existingUser = users.find(u => u.email === email);
-        if (existingUser) {
-          statusMessage.className = 'message error';
-          statusMessage.innerText = 'An account with this email already exists.';
-          return;
-        }
+        // --- CLOUD SIGN UP FLOW ---
+        const userRef = db.collection("users").doc(email);
 
-        const formattedTag = rawTag.startsWith('$') ? rawTag : '$' + rawTag;
+        userRef.get().then((doc) => {
+          if (doc.exists) {
+            statusMessage.className = 'message error';
+            statusMessage.innerText = 'An account with this email already exists.';
+            return;
+          }
 
-        const newUser = {
-          name: name || 'User',
-          email: email,
-          password: password,
-          cashtag: formattedTag,
-          cashBalance: 0.00,
-          btcHolding: 0,
-          btcPrice: 28507.68,
-          profilePic: "",
-          history: []
-        };
+          const formattedTag = rawTag.startsWith('$') ? rawTag : '$' + rawTag;
 
-        users.push(newUser);
-        localStorage.setItem('allAppUsers', JSON.stringify(users));
+          const newUser = {
+            name: name || 'User',
+            email: email,
+            password: password,
+            cashtag: formattedTag,
+            cashBalance: 0.00,
+            btcHolding: 0,
+            btcPrice: 28507.68,
+            profilePic: "",
+            history: []
+          };
 
-        statusMessage.className = 'message success';
-        statusMessage.innerText = 'Account created successfully! Please sign in.';
-        setTimeout(() => tabSignin.click(), 1200);
+          userRef.set(newUser).then(() => {
+            statusMessage.className = 'message success';
+            statusMessage.innerText = 'Account created successfully in the cloud! Please sign in.';
+            setTimeout(() => tabSignin.click(), 1200);
+          }).catch((err) => {
+            console.error(err);
+            statusMessage.className = 'message error';
+            statusMessage.innerText = 'Error creating account. Check Firestore rules.';
+          });
+        });
 
       } else {
-        // --- SIGN IN FLOW ---
+        // --- CLOUD SIGN IN FLOW ---
         if (email === 'admin@money.com' && password === 'admin123') {
           localStorage.setItem('userToken', 'admin-token-' + Date.now());
           window.location.href = 'admin.html';
           return;
         }
 
-        const foundUser = users.find(u => u.email === email && u.password === password);
-        
-        if (foundUser) {
-          localStorage.setItem('userToken', 'user-token-' + Date.now());
-          
-          // Save active session
-          localStorage.setItem('walletAppSession', JSON.stringify(foundUser)); 
-          
-          window.location.href = 'index.html';
-        } else {
+        db.collection("users").doc(email).get().then((doc) => {
+          if (doc.exists) {
+            const userData = doc.data();
+            if (userData.password === password) {
+              localStorage.setItem('userToken', 'user-token-' + Date.now());
+              // Save email session that index.html expects
+              localStorage.setItem('walletAppSessionEmail', email); 
+              
+              window.location.href = 'index.html';
+            } else {
+              statusMessage.className = 'message error';
+              statusMessage.innerText = 'Invalid email or password.';
+            }
+          } else {
+            statusMessage.className = 'message error';
+            statusMessage.innerText = 'Account not found. Please sign up.';
+          }
+        }).catch((error) => {
+          console.error("Login error:", error);
           statusMessage.className = 'message error';
-          statusMessage.innerText = 'Invalid email or password.';
-        }
+          statusMessage.innerText = 'Database connection error.';
+        });
       }
     });
   </script>
