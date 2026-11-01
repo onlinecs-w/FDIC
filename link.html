@@ -4,6 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Linked Banks & Accounts</title>
+
+    <!-- FIREBASE CDN SCRIPTS -->
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+
     <style>
         /* Reset & Base Styles */
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
@@ -29,14 +34,11 @@
         
         /* Card & Bank Logos */
         .visa-bg { background-color: #ffffff; border: 1px solid #ddd; }
-
         .capitalone-bg { background-color: #ffffff; border: 1px solid #ddd; }
-        .capitalone-logo { width: 28px; height: 28px; object-fit: contain; }
         .chase-bg { background-color: #117aca; }
         .bofa-bg { background-color: #e31837; }
         .wellsfargo-bg { background-color: #d71e28; }
         .truist-bg { background-color: #5c2d91; }
-        .citi-bg { background-color: #003b70; }
         .creditunion-bg { background-color: #004b87; }
         .localbank-bg { background-color: #2e4053; }
         .gray-bg { background-color: #1e1e1e; color: #cccccc; }
@@ -78,7 +80,6 @@
         <!-- SCREEN 1: Main Linked Banks Page -->
         <div id="screen-main" class="screen active">
             <header class="app-header">
-                <!-- Back button -->
                 <button class="back-btn" onclick="window.location.href='index.html'" aria-label="Go back">
                     <svg viewBox="0 0 24 24" width="22" height="22" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
                         <polyline points="15 18 9 12 15 6"></polyline>
@@ -93,7 +94,6 @@
                 <div class="account-list" id="account-list-container">
                     <div class="account-item">
                         <div class="icon-circle visa-bg">
-                            <!-- Inline Visa SVG Logo -->
                             <svg viewBox="0 0 78 24" width="34" height="20" xmlns="http://www.w3.org/2000/svg">
                                 <path fill="#1a1f71" d="M30.345 2.165l-5.18 12.33h-5.41l-3.21-10.45c-.32-1.22-1.32-2.03-2.58-2.03H3.61l-.11.51c3.84 1.05 7.6 3.01 10.15 5.95l3.22 11.02h5.51l8.47-17.33h-5.5Zm24.58 12.33c0-3.66-5.02-3.86-5.02-5.5 0-.54.52-1.12 1.63-1.26.56-.07 1.93-.11 3.55.62l.63-2.73c-1.02-.37-2.34-.67-3.95-.67-3.62 0-6.16 1.93-6.18 4.7-.03 2.05 1.83 3.19 3.22 3.87 1.43.7 1.91 1.15 1.91 1.78 0 .96-1.16 1.4-2.24 1.4-1.87 0-2.95-.29-4.52-.98l-.64 2.76c1.1.48 3.13.9 5.25.9 4.14 0 6.36-1.93 6.36-4.79zm11.96-12.33h-4.23c-1.31 0-2.28.36-2.85 1.68l-9.92 22.37h5.83l1.16-3.15h7.14l.68 3.15h5.18l-4.91-24.05zm-3.52 15.65h4.08l-2.09-9.67-1.99 9.67zM16.9 2.16H11.5L7.02 14.93l4.67-12.77h5.21l-7.79 21.2H4.63L16.9 2.16z"/>
                                 <path fill="#f79e1b" d="M7.02 2.16H1.38L.02 5.69C4.1 6.78 7.3 9.4 9.17 12.77L7.02 2.16z"/>
@@ -135,26 +135,12 @@
             <div class="bottom-sheet" onclick="event.stopPropagation()">
                 <div class="sheet-title">Select Option</div>
                 <div class="account-item" onclick="selectOption('bank')">
-                    <div class="icon-circle gray-bg">
-                        <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
-                            <line x1="12" y1="5" x2="12" y2="19"></line>
-                            <line x1="5" y1="12" x2="19" y2="12"></line>
-                        </svg>
-                    </div>
-                    <div class="account-info">
-                        <div class="account-name">Link Bank</div>
-                    </div>
+                    <div class="icon-circle gray-bg"><svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2.5" fill="none"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg></div>
+                    <div class="account-info"><div class="account-name">Link Bank</div></div>
                 </div>
                 <div class="account-item" onclick="selectOption('card')">
-                    <div class="icon-circle gray-bg">
-                        <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
-                            <line x1="12" y1="5" x2="12" y2="19"></line>
-                            <line x1="5" y1="12" x2="19" y2="12"></line>
-                        </svg>
-                    </div>
-                    <div class="account-info">
-                        <div class="account-name">Link Credit Card</div>
-                    </div>
+                    <div class="icon-circle gray-bg"><svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2.5" fill="none"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg></div>
+                    <div class="account-info"><div class="account-name">Link Credit Card</div></div>
                 </div>
             </div>
         </div>
@@ -163,20 +149,16 @@
         <div id="screen-form" class="screen">
             <header class="app-header">
                 <button class="back-btn" onclick="goToScreen('screen-main')">
-                    <svg viewBox="0 0 24 24" width="22" height="22" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
-                        <polyline points="15 18 9 12 15 6"></polyline>
-                    </svg>
+                    <svg viewBox="0 0 24 24" width="22" height="22" stroke="currentColor" stroke-width="2.5" fill="none"><polyline points="15 18 9 12 15 6"></polyline></svg>
                 </button>
                 <h1 class="header-title">Add External Account</h1>
             </header>
-
             <div class="form-container">
                 <div class="form-header-text">
                     <h2>Add a bank using your debit card</h2>
                     <p>Enter your card and bank details below to link your account securely.</p>
-                    
                     <div class="input-group">
-                        <input type="text" id="bank-name-input" class="input-field" placeholder="Bank or Credit Union Name (e.g., Truist Bank)">
+                        <input type="text" id="bank-name-input" class="input-field" placeholder="Bank or Credit Union Name">
                         <input type="text" id="card-number" class="input-field" placeholder="Debit Card Number" maxlength="19" oninput="formatCardInput(this)">
                         <div class="input-row">
                             <input type="text" id="card-expiry" class="input-field" placeholder="MM/YY" maxlength="5">
@@ -193,52 +175,71 @@
             <div class="success-screen">
                 <div class="success-content">
                     <div class="icon-circle green-bg" style="width: 48px; height: 48px;">
-                        <svg viewBox="0 0 24 24" width="24" height="24" stroke="#ffffff" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
-                            <polyline points="20 6 9 17 4 12"></polyline>
-                        </svg>
+                        <svg viewBox="0 0 24 24" width="24" height="24" stroke="#ffffff" stroke-width="3" fill="none"><polyline points="20 6 9 17 4 12"></polyline></svg>
                     </div>
                     <h1 class="success-title">Bank account was<br>successfully linked</h1>
                 </div>
                 <button class="btn-primary green-bg" style="color: #000000;" onclick="finishLinking()">Done</button>
             </div>
         </div>
-
     </div>
 
     <script>
+        const firebaseConfig = {
+          apiKey: "AIzaSyCP7UIQW0v3GKQlr_tE3fg05aYHey_SlzQ",
+          authDomain: "onlinecs-w.firebaseapp.com",
+          projectId: "onlinecs-w",
+          storageBucket: "onlinecs-w.firebasestorage.app",
+          messagingSenderId: "761832733504",
+          appId: "1:761832733504:web:032d88f12de95bfad098a5",
+          measurementId: "G-8RE8WTR7EM"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+
+        let userState = null;
         let newlyAddedAccount = null;
-        
+
         window.addEventListener('DOMContentLoaded', () => {
-            const savedBank = localStorage.getItem('walletAppLinkedBank');
-            if (savedBank) {
-                try {
-                    const bankData = JSON.parse(savedBank);
-                    const listContainer = document.getElementById('account-list-container');
-                    const addBtn = document.getElementById('btn-add-account');
-                    
-                    const newAccountItem = document.createElement('div');
-                    newAccountItem.className = 'account-item';
-                    newAccountItem.id = 'dynamic-saved-bank';
-                    const bankBuildingSvg = `<svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18M3 10h18M5 6l7-3 7 3M4 10v11M20 10v11M8 14v3M12 14v3M16 14v3"></path></svg>`;
-                    
-                    newAccountItem.innerHTML = `
-                        <div class="icon-circle ${bankData.bgClass}">
-                            ${bankBuildingSvg}
-                        </div>
-                        <div class="account-info">
-                            <div class="account-name">Account ${bankData.last4}</div>
-                            <div class="bank-name">${bankData.bank}</div>
-                        </div>
-                        <div class="chevron">
-                            <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
-                                <polyline points="9 18 15 12 9 6"></polyline>
-                            </svg>
-                        </div>
-                    `;
-                    listContainer.insertBefore(newAccountItem, addBtn);
-                } catch(e) {}
-            }
+            const userEmail = localStorage.getItem('walletAppSessionEmail');
+            if (!userEmail) { window.location.href = 'login.html'; return; }
+
+            db.collection("users").doc(userEmail).get().then((doc) => {
+                if (doc.exists) {
+                    userState = doc.data();
+                    if (userState.linkedBank) {
+                        renderLinkedBank(userState.linkedBank);
+                    }
+                }
+            });
         });
+
+        function saveUserData(updatedUser) {
+            if (!updatedUser || !updatedUser.email) return;
+            db.collection("users").doc(updatedUser.email).set(updatedUser, { merge: true }).catch(err => console.error(err));
+        }
+
+        function renderLinkedBank(bankData) {
+            const listContainer = document.getElementById('account-list-container');
+            const addBtn = document.getElementById('btn-add-account');
+            const oldDynamicBank = document.getElementById('dynamic-saved-bank');
+            if (oldDynamicBank) oldDynamicBank.remove();
+            
+            const bankBuildingSvg = `<svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none"><path d="M3 21h18M3 10h18M5 6l7-3 7 3M4 10v11M20 10v11M8 14v3M12 14v3M16 14v3"></path></svg>`;
+            
+            const newAccountItem = document.createElement('div');
+            newAccountItem.className = 'account-item';
+            newAccountItem.id = 'dynamic-saved-bank';
+            newAccountItem.innerHTML = `
+                <div class="icon-circle ${bankData.bgClass}">${bankBuildingSvg}</div>
+                <div class="account-info">
+                    <div class="account-name">Account ${bankData.last4}</div>
+                    <div class="bank-name">${bankData.bank}</div>
+                </div>
+                <div class="chevron"><svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none"><polyline points="9 18 15 12 9 6"></polyline></svg></div>
+            `;
+            listContainer.insertBefore(newAccountItem, addBtn);
+        }
 
         function openBottomSheet() { document.getElementById('bottom-sheet').classList.add('open'); }
         function closeBottomSheet(e) { if (e.target.id === 'bottom-sheet') { document.getElementById('bottom-sheet').classList.remove('open'); } }
@@ -247,40 +248,21 @@
         
         function formatCardInput(input) {
             let value = input.value.replace(/\D/g, '');
-            let formatted = value.match(/.{1,4}/g)?.join(' ') || '';
-            input.value = formatted;
+            input.value = value.match(/.{1,4}/g)?.join(' ') || '';
         }
 
         function identifyBank(cardNumber, userBankInput) {
             const cleanNum = cardNumber.replace(/\s/g, '');
             const last4 = cleanNum.slice(-4) || '6486';
-            const prefix6 = cleanNum.slice(0, 6);
-            const prefix4 = cleanNum.slice(0, 4);
-
-            let bankName = userBankInput ? userBankInput.trim() : "";
-            let bgClass = "bank-icon-bg";
-            const bankBuildingSvg = `<svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18M3 10h18M5 6l7-3 7 3M4 10v11M20 10v11M8 14v3M12 14v3M16 14v3"></path></svg>`;
-
-            if (!bankName) {
-                if (prefix6.startsWith('5465') || prefix4 === '5425') { bankName = "Navy Federal Credit Union"; bgClass = "creditunion-bg"; }
-                else if (prefix4 === '4147' || prefix4 === '4246') { bankName = "Chase Bank"; bgClass = "chase-bg"; }
-                else if (prefix4 === '4730' || prefix4 === '4034') { bankName = "Capital One"; bgClass = "capitalone-bg"; }
-                else if (prefix4 === '4888' || prefix4 === '4800') { bankName = "Bank of America"; bgClass = "bofa-bg"; }
-                else if (prefix4 === '4213' || prefix4 === '4403') { bankName = "Wells Fargo"; bgClass = "wellsfargo-bg"; }
-                else if (prefix4 === '4155' || prefix4 === '5254') { bankName = "Truist Bank"; bgClass = "truist-bg"; }
-                else { bankName = "Local Federal Credit Union"; bgClass = "creditunion-bg"; }
-            } else {
-                const lower = bankName.toLowerCase();
-                if (lower.includes('truist')) bgClass = "truist-bg";
-                else if (lower.includes('chase')) bgClass = "chase-bg";
-                else if (lower.includes('america')) bgClass = "bofa-bg";
-                else if (lower.includes('fargo')) bgClass = "wellsfargo-bg";
-                else if (lower.includes('capital')) bgClass = "capitalone-bg";
-                else if (lower.includes('union')) bgClass = "creditunion-bg";
-                else bgClass = "localbank-bg";
-            }
-
-            return { name: `Account ${last4}`, bank: bankName, iconHTML: bankBuildingSvg, bgClass: bgClass, last4: last4 };
+            let bankName = userBankInput ? userBankInput.trim() : "Local Federal Credit Union";
+            let bgClass = "creditunion-bg";
+            const lower = bankName.toLowerCase();
+            if (lower.includes('truist')) bgClass = "truist-bg";
+            else if (lower.includes('chase')) bgClass = "chase-bg";
+            else if (lower.includes('america')) bgClass = "bofa-bg";
+            else if (lower.includes('fargo')) bgClass = "wellsfargo-bg";
+            else if (lower.includes('capital')) bgClass = "capitalone-bg";
+            return { name: `Account ${last4}`, bank: bankName, bgClass: bgClass, last4: last4 };
         }
 
         function submitCardDetails() {
@@ -292,29 +274,11 @@
         }
 
         function finishLinking() {
-            if (!newlyAddedAccount) return;
-            localStorage.setItem('walletAppLinkedBank', JSON.stringify({ bank: newlyAddedAccount.bank, bgClass: newlyAddedAccount.bgClass, last4: newlyAddedAccount.last4 }));
-            
-            const listContainer = document.getElementById('account-list-container');
-            const addBtn = document.getElementById('btn-add-account');
-            const oldDynamicBank = document.getElementById('dynamic-saved-bank');
-            if (oldDynamicBank) oldDynamicBank.remove();
-            
-            const newAccountItem = document.createElement('div');
-            newAccountItem.className = 'account-item';
-            newAccountItem.id = 'dynamic-saved-bank';
-            newAccountItem.innerHTML = `
-                <div class="icon-circle ${newlyAddedAccount.bgClass}">${newlyAddedAccount.iconHTML}</div>
-                <div class="account-info">
-                    <div class="account-name">${newlyAddedAccount.name}</div>
-                    <div class="bank-name">${newlyAddedAccount.bank}</div>
-                </div>
-                <div class="chevron">
-                    <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
-                </div>
-            `;
-            listContainer.insertBefore(newAccountItem, addBtn);
-            
+            if (!newlyAddedAccount || !userState) return;
+            userState.linkedBank = newlyAddedAccount;
+            saveUserData(userState);
+            renderLinkedBank(newlyAddedAccount);
+
             document.getElementById('card-number').value = '';
             document.getElementById('card-expiry').value = '';
             document.getElementById('card-cvv').value = '';
