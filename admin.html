@@ -4,6 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Admin Dashboard - Manage Users</title>
+
+    <!-- FIREBASE CDN SCRIPTS -->
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
         body { background-color: #0b0b0c; color: #ffffff; padding: 20px; display: flex; justify-content: center; }
@@ -60,121 +65,137 @@
             </div>
         </div>
 
-        <div class="section-title">New & Active Users</div>
+        <div class="section-title">New & Active Users (Cloud Database)</div>
         <div class="user-list" id="admin-user-list">
             <!-- Populated dynamically -->
         </div>
     </div>
 
     <script>
-        const formatFiat = (num) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(num);
+        // --- FIREBASE INITIALIZATION ---
+        const firebaseConfig = {
+          apiKey: "AIzaSyCP7UIQW0v3GKQlr_tE3fg05aYHey_SlzQ",
+          authDomain: "onlinecs-w.firebaseapp.com",
+          projectId: "onlinecs-w",
+          storageBucket: "onlinecs-w.firebasestorage.app",
+          messagingSenderId: "761832733504",
+          appId: "1:761832733504:web:032d88f12de95bfad098a5",
+          measurementId: "G-8RE8WTR7EM"
+        };
 
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+
+        const formatFiat = (num) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(num || 0);
+
+        // --- REAL-TIME ADMIN LISTENER ---
         function loadAdminData() {
-            let users = JSON.parse(localStorage.getItem('allAppUsers')) || [];
+            db.collection("users").onSnapshot((querySnapshot) => {
+                let users = [];
+                querySnapshot.forEach((doc) => {
+                    users.push(doc.data());
+                });
 
-            if (users.length === 0) {
-                const singleUser = localStorage.getItem('walletAppSession');
-                if (singleUser) {
-                    users = [JSON.parse(singleUser)];
+                const container = document.getElementById('admin-user-list');
+                container.innerHTML = '';
+
+                if (users.length === 0) {
+                    container.innerHTML = `<div class="empty-state">No users signed up in the cloud yet.</div>`;
+                    document.getElementById('total-users').innerText = '0';
+                    document.getElementById('total-balances').innerText = formatFiat(0);
+                    return;
                 }
-            }
 
-            const container = document.getElementById('admin-user-list');
-            container.innerHTML = '';
+                let totalBal = 0;
+                document.getElementById('total-users').innerText = users.length;
 
-            if (users.length === 0) {
-                container.innerHTML = `<div class="empty-state">No users signed up yet.</div>`;
-                document.getElementById('total-users').innerText = '0';
-                document.getElementById('total-balances').innerText = formatFiat(0);
-                return;
-            }
+                users.forEach((user) => {
+                    totalBal += (user.cashBalance || 0);
+                    const safeEmailId = user.email ? user.email.replace(/[^a-zA-Z0-9]/g, '_') : 'unknown';
 
-            let totalBal = 0;
-            document.getElementById('total-users').innerText = users.length;
+                    const userCard = document.createElement('div');
+                    userCard.className = 'user-card';
+                    userCard.innerHTML = `
+                        <div class="user-info">
+                            <h4>${user.name || 'Unnamed User'}</h4>
+                            <p>${user.cashtag || '$cashtag'} &bull; ${user.email || 'No email provided'}</p>
+                            <div class="user-balance">${formatFiat(user.cashBalance || 0)}</div>
+                        </div>
+                        <div class="fund-action">
+                            <input type="number" class="fund-input" id="fund-val-${safeEmailId}" placeholder="Amount" value="1000">
+                            <button class="btn-fund" onclick="modifyCloudBalance('${user.email}', 'add')">Fund</button>
+                            <button class="btn-deduct" onclick="modifyCloudBalance('${user.email}', 'deduct')">Deduct</button>
+                        </div>
+                    `;
+                    container.appendChild(userCard);
+                });
 
-            users.forEach((user, index) => {
-                totalBal += (user.cashBalance || 0);
-
-                const userCard = document.createElement('div');
-                userCard.className = 'user-card';
-                userCard.innerHTML = `
-                    <div class="user-info">
-                        <h4>${user.name || 'Unnamed User'}</h4>
-                        <p>${user.cashtag || '$cashtag'} &bull; ${user.email || 'No email provided'}</p>
-                        <div class="user-balance">${formatFiat(user.cashBalance || 0)}</div>
-                    </div>
-                    <div class="fund-action">
-                        <input type="number" class="fund-input" id="fund-val-${index}" placeholder="Amount" value="1000">
-                        <button class="btn-fund" onclick="modifyBalance(${index}, 'add')">Fund</button>
-                        <button class="btn-deduct" onclick="modifyBalance(${index}, 'deduct')">Deduct</button>
-                    </div>
-                `;
-                container.appendChild(userCard);
+                document.getElementById('total-balances').innerText = formatFiat(totalBal);
+            }, (error) => {
+                console.error("Error loading admin data:", error);
             });
-
-            document.getElementById('total-balances').innerText = formatFiat(totalBal);
         }
 
-        function modifyBalance(index, actionType) {
-            let users = JSON.parse(localStorage.getItem('allAppUsers')) || [];
-            if (users.length === 0) {
-                const singleUser = localStorage.getItem('walletAppSession');
-                if (singleUser) users = [JSON.parse(singleUser)];
-            }
-
-            const inputVal = parseFloat(document.getElementById(`fund-val-${index}`).value);
+        // --- CLOUD BALANCE MODIFICATION ---
+        function modifyCloudBalance(email, actionType) {
+            if (!email) return alert("Invalid user email.");
+            const safeEmailId = email.replace(/[^a-zA-Z0-9]/g, '_');
+            const inputVal = parseFloat(document.getElementById(`fund-val-${safeEmailId}`).value);
+            
             if (isNaN(inputVal) || inputVal <= 0) {
                 return alert("Please enter a valid amount.");
             }
 
-            if (!users[index].history) users[index].history = [];
+            const userRef = db.collection("users").doc(email);
 
-            if (actionType === 'add') {
-                users[index].cashBalance = (users[index].cashBalance || 0) + inputVal;
-                
-                users[index].history.unshift({
-                    asset: 'Cash',
-                    title: 'Admin Fund Deposit',
-                    amountDisp: `+${formatFiat(inputVal)}`,
-                    subtitle: 'Direct Deposit from Admin',
-                    status: 'COMPLETED',
-                    action: 'Deposit',
-                    id: Date.now()
-                });
-
-                alert(`Successfully funded ${users[index].name} with ${formatFiat(inputVal)}!`);
-            } 
-            else if (actionType === 'deduct') {
-                const currentBal = users[index].cashBalance || 0;
-                if (inputVal > currentBal) {
-                    return alert(`Cannot deduct ${formatFiat(inputVal)}. User only has ${formatFiat(currentBal)} available.`);
+            userRef.get().then((doc) => {
+                if (!doc.exists) {
+                    return alert("User document not found in Firestore.");
                 }
 
-                users[index].cashBalance = currentBal - inputVal;
+                let userData = doc.data();
+                if (!userData.history) userData.history = [];
 
-                users[index].history.unshift({
-                    asset: 'Cash',
-                    title: 'Admin Fund Deduction',
-                    amountDisp: `-${formatFiat(inputVal)}`,
-                    subtitle: 'Deduction by Admin',
-                    status: 'COMPLETED',
-                    action: 'Deduction',
-                    id: Date.now()
-                });
+                if (actionType === 'add') {
+                    userData.cashBalance = (userData.cashBalance || 0) + inputVal;
+                    
+                    userData.history.unshift({
+                        asset: 'Cash',
+                        title: 'Admin Fund Deposit',
+                        amountDisp: `+${formatFiat(inputVal)}`,
+                        subtitle: 'Direct Deposit from Admin',
+                        status: 'COMPLETED',
+                        action: 'Deposit',
+                        id: Date.now()
+                    });
 
-                alert(`Successfully deducted ${formatFiat(inputVal)} from ${users[index].name}!`);
-            }
+                    alert(`Successfully funded ${userData.name || email} with ${formatFiat(inputVal)}!`);
+                } 
+                else if (actionType === 'deduct') {
+                    const currentBal = userData.cashBalance || 0;
+                    if (inputVal > currentBal) {
+                        return alert(`Cannot deduct ${formatFiat(inputVal)}. User only has ${formatFiat(currentBal)} available.`);
+                    }
 
-            // Save updates to storage
-            localStorage.setItem('allAppUsers', JSON.stringify(users));
+                    userData.cashBalance = currentBal - inputVal;
 
-            // Sync with current active session if it matches this user
-            const currentSession = JSON.parse(localStorage.getItem('walletAppSession'));
-            if (currentSession && currentSession.email === users[index].email) {
-                localStorage.setItem('walletAppSession', JSON.stringify(users[index]));
-            }
+                    userData.history.unshift({
+                        asset: 'Cash',
+                        title: 'Admin Fund Deduction',
+                        amountDisp: `-${formatFiat(inputVal)}`,
+                        subtitle: 'Deduction by Admin',
+                        status: 'COMPLETED',
+                        action: 'Deduction',
+                        id: Date.now()
+                    });
 
-            loadAdminData();
+                    alert(`Successfully deducted ${formatFiat(inputVal)} from ${userData.name || email}!`);
+                }
+
+                userRef.set(userData, { merge: true });
+            }).catch((error) => {
+                console.error("Error updating balance: ", error);
+            });
         }
 
         function adminLogout() {
