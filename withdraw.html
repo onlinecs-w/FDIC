@@ -34,7 +34,8 @@
         .success-content { display: flex; flex-direction: column; align-items: flex-start; margin-top: 40px; margin-bottom: auto; }
         .check-badge { width: 64px; height: 64px; background-color: #00D632; border-radius: 50%; display: flex; justify-content: center; align-items: center; margin-bottom: 32px; }
         .check-badge svg { width: 28px; height: 28px; stroke: #000000; stroke-width: 3.5; fill: none; stroke-linecap: round; stroke-linejoin: round; }
-        .headline { font-size: 28px; font-weight: 700; line-height: 1.25; color: #ffffff; }
+        .headline { font-size: 26px; font-weight: 700; line-height: 1.3; color: #ffffff; }
+        .target-subtext { font-size: 15px; color: #8e8e93; margin-top: 14px; font-weight: normal; word-break: break-all; line-height: 1.4; }
         .bottom-action { margin-top: auto; padding-bottom: 20px; width: 100%; }
         .btn-action { display: block; width: 100%; background-color: #48C2E9; color: #ffffff; text-align: center; padding: 18px; border-radius: 30px; font-size: 17px; font-weight: 700; border: none; cursor: pointer; }
         .btn-done { display: flex; justify-content: center; align-items: center; width: 100%; background-color: #ffffff; color: #000000; padding: 18px 0; border-radius: 32px; font-size: 17px; font-weight: 700; border: none; cursor: pointer; text-decoration: none; }
@@ -60,7 +61,10 @@
             <div class="header-left"><a href="index.html" class="close-btn">✕</a></div>
             <div class="success-content">
                 <div class="check-badge"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"></polyline></svg></div>
-                <h1 class="headline" id="initiated-headline">You initiated a withdrawal of <span id="display-usd-amount">$100.88</span> (<span id="display-btc-amount">0.00125356 BTC</span>)</h1>
+                <h1 class="headline" id="initiated-headline">
+                    You initiated a withdrawal of <span id="display-usd-amount">$0.00</span> (<span id="display-btc-amount">0.00000000 BTC</span>)
+                    <div class="target-subtext" id="display-target">To: Bitcoin Address</div>
+                </h1>
             </div>
             <div class="bottom-action"><a href="index.html" class="btn-done">Done</a></div>
         </div>
@@ -79,20 +83,22 @@
         firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
 
-        let userState = null;
+        const userEmail = localStorage.getItem('walletAppSessionEmail');
+        let userState = { email: userEmail, history: [], btcHolding: 0, cashBalance: 0, btcPrice: 28507.68 };
 
         window.addEventListener('DOMContentLoaded', () => {
-            const userEmail = localStorage.getItem('walletAppSessionEmail');
             if (!userEmail) { window.location.href = 'login.html'; return; }
 
             db.collection("users").doc(userEmail).get().then((doc) => {
-                if (doc.exists) userState = doc.data();
-            });
+                if (doc.exists) {
+                    userState = { email: userEmail, ...doc.data() };
+                }
+            }).catch(err => console.error("Error loading user state:", err));
         });
 
         function saveUserData() {
-            if (!userState || !userState.email) return;
-            db.collection("users").doc(userState.email).set(userState, { merge: true }).catch(err => console.error(err));
+            if (!userEmail) return;
+            db.collection("users").doc(userEmail).set(userState, { merge: true }).catch(err => console.error(err));
         }
 
         function selectOption(selectedElement) {
@@ -105,43 +111,47 @@
             const intentData = localStorage.getItem('currentTxIntent');
             let usdAmount = 100.88;
             let btcAmount = 0.00125356;
-            let targetRecipient = "Bitcoin Withdrawal";
+            let targetRecipient = "Bitcoin Address";
             let mode = "btc";
 
-            if (userState && intentData) {
+            if (intentData) {
                 try {
                     let intent = JSON.parse(intentData);
                     usdAmount = parseFloat(intent.amount) || 100.88;
                     mode = intent.mode || "btc";
-                    targetRecipient = intent.target || "Bitcoin Address";
-                } catch(e){}
-
-                const btcPrice = userState.btcPrice || 28507.68;
-                btcAmount = usdAmount / btcPrice;
-
-                if (mode === 'btc') {
-                    userState.btcHolding = Math.max(0, (userState.btcHolding || 0) - btcAmount);
-                } else {
-                    userState.cashBalance = Math.max(0, (userState.cashBalance || 0) - usdAmount);
+                    targetRecipient = intent.target || intent.cashtag || intent.address || "Bitcoin Address";
+                } catch(e) {
+                    console.error("Error parsing intent data:", e);
                 }
-
-                if (!userState.history) userState.history = [];
-                userState.history.unshift({
-                    id: Date.now(),
-                    asset: mode === 'btc' ? 'Bitcoin' : 'Cash',
-                    title: targetRecipient,
-                    amountDisp: `-$${usdAmount.toFixed(2)}`,
-                    subtitle: mode === 'btc' ? `~ ${btcAmount.toFixed(8)} BTC` : `To ${targetRecipient}`,
-                    status: 'PENDING',
-                    action: 'Withdrawal'
-                });
-
-                saveUserData();
-                localStorage.removeItem('currentTxIntent');
             }
 
+            const btcPrice = userState.btcPrice || 28507.68;
+            btcAmount = usdAmount / btcPrice;
+
+            if (mode === 'btc') {
+                userState.btcHolding = Math.max(0, (userState.btcHolding || 0) - btcAmount);
+            } else {
+                userState.cashBalance = Math.max(0, (userState.cashBalance || 0) - usdAmount);
+            }
+
+            if (!userState.history) userState.history = [];
+            userState.history.unshift({
+                id: Date.now(),
+                asset: mode === 'btc' ? 'Bitcoin' : 'Cash',
+                title: targetRecipient,
+                amountDisp: `-$${usdAmount.toFixed(2)}`,
+                subtitle: mode === 'btc' ? `~ ${btcAmount.toFixed(8)} BTC` : `To ${targetRecipient}`,
+                status: 'PENDING',
+                action: 'Withdrawal'
+            });
+
+            saveUserData();
+            localStorage.removeItem('currentTxIntent');
+
+            // Update UI elements dynamically
             document.getElementById('display-usd-amount').innerText = `$${usdAmount.toFixed(2)}`;
             document.getElementById('display-btc-amount').innerText = `${btcAmount.toFixed(8)} BTC`;
+            document.getElementById('display-target').innerText = `To: ${targetRecipient}`;
 
             document.getElementById('screen-speed').classList.remove('active');
             document.getElementById('screen-success').classList.add('active');
