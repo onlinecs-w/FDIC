@@ -33,7 +33,6 @@
     .receipt-label { color: #88888e; }
     .receipt-value { color: white; font-weight: 500; }
     .divider { height: 10px; border-bottom: 1px solid #2c2c2e; margin-bottom: 16px; }
-    .disclaimer { text-align: center; font-size: 11px; color: #88888e; margin-top: 20px; margin-bottom: 20px; }
     .success-icon-container { margin-top: 40px; margin-bottom: 20px; }
     .success-icon { width: 44px; height: 44px; background-color: #00d2ff; border-radius: 50%; display: flex; justify-content: center; align-items: center; }
     .success-icon svg { width: 24px; height: 24px; fill: none; stroke: white; stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
@@ -64,7 +63,7 @@
         <div class="content-wrapper">
             <div class="nav-top"><div class="close-btn" onclick="showScreen('screen-input')">✕</div></div>
             <div class="confirm-title" id="confirm-title">Sell $0.00 of Bitcoin</div>
-            <div class="receipt-row"><span class="receipt-label">Destination</span><span class="receipt-value">Cash App</span></div>
+            <div class="receipt-row"><span class="receipt-label">Destination</span><span class="receipt-value">Cash Balance</span></div>
             <div class="receipt-row"><span class="receipt-label">Amount</span><span class="receipt-value" id="confirm-btc-amount">0.00000000 BTC</span></div>
             <div class="receipt-row"><span class="receipt-label">Exchange Rate</span><span class="receipt-value" id="confirm-rate">$28,507.68</span></div>
             <div class="divider"></div>
@@ -97,7 +96,8 @@
         firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
 
-        let userState = null;
+        const userEmail = localStorage.getItem('walletAppSessionEmail');
+        let userState = { email: userEmail, history: [], btcHolding: 0, cashBalance: 0, btcPrice: 28507.68 };
         let inputValue = "0";
         let exchangeRate = 28507.68;
         let finalBtcAmount = "0";
@@ -105,20 +105,19 @@
         let enteredAmountNum = 0;
 
         window.addEventListener('DOMContentLoaded', () => {
-            const userEmail = localStorage.getItem('walletAppSessionEmail');
             if (!userEmail) { window.location.href = 'login.html'; return; }
 
             db.collection("users").doc(userEmail).get().then((doc) => {
                 if (doc.exists) {
-                    userState = doc.data();
+                    userState = { email: userEmail, history: [], btcHolding: 0, cashBalance: 0, btcPrice: 28507.68, ...doc.data() };
                     exchangeRate = userState.btcPrice || 28507.68;
                 }
-            });
+            }).catch(err => console.error("Error loading user state:", err));
         });
 
         function saveUserData() {
-            if (!userState || !userState.email) return;
-            db.collection("users").doc(userState.email).set(userState, { merge: true }).catch(err => console.error(err));
+            if (!userEmail) return;
+            db.collection("users").doc(userEmail).set(userState, { merge: true }).catch(err => console.error(err));
         }
 
         function showScreen(screenId) {
@@ -168,18 +167,20 @@
 
         function goToSuccess() {
             let btcCalcNum = enteredAmountNum / exchangeRate;
+            
+            // Deduct BTC and add cash proceeds
             userState.btcHolding = Math.max(0, (userState.btcHolding || 0) - btcCalcNum);
             userState.cashBalance = (userState.cashBalance || 0) + calculatedProceeds;
 
             if (!userState.history) userState.history = [];
             userState.history.unshift({
+                id: Date.now(),
                 asset: 'Bitcoin',
-                title: 'Bitcoin',
+                title: 'Bitcoin Sale',
                 amountDisp: `+$${calculatedProceeds.toFixed(2)}`,
                 subtitle: `Sold ~${btcCalcNum.toFixed(8)} BTC`,
                 status: 'COMPLETED',
-                action: 'Sell',
-                id: Date.now()
+                action: 'Sell'
             });
 
             saveUserData();
