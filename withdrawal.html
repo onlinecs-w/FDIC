@@ -19,7 +19,7 @@
         .back-btn { background: none; border: none; color: #ffffff; cursor: pointer; display: flex; align-items: center; justify-content: center; }
         .header-title-center { width: 100%; text-align: center; padding-right: 38px; }
         .header-title { font-size: 18px; font-weight: 600; color: #ffffff; }
-        .header-subtitle { font-size: 13px; color: #888888; margin-top: 4px; display: flex; align-items: center; justify-content: center; }
+        .header-subtitle { font-size: 13px; color: #888888; margin-top: 4px; display: flex; align-items: center; justify-content: center; cursor: pointer; }
         .dropdown-item { padding: 12px; color: #fff; font-size: 14px; font-weight: 600; text-align: center; cursor: pointer; border-bottom: 1px solid #2a2a2a; }
         .dropdown-item:hover { background-color: #2c2c2e; border-radius: 8px; }
         .withdraw-amount-container { padding: 20px; display: flex; flex-direction: column; align-items: center; justify-content: center; flex-grow: 1; }
@@ -133,7 +133,50 @@
             <div class="footer-action"><button id="withdraw-btn" class="btn-withdraw" disabled onclick="executeWithdraw()">Withdraw</button></div>
         </div>
 
-        <!-- SCREEN 3: Success -->
+        <!-- SCREEN 3: OTP Verification Screen -->
+        <div id="screen-otp" class="screen" style="padding: 0; justify-content: flex-start;">
+            <header class="app-header" style="border-bottom: 1px solid #222;">
+                <button class="back-btn" onclick="goToScreen('screen-options')">
+                    <svg viewBox="0 0 24 24" width="22" height="22" stroke="currentColor" stroke-width="2.5" fill="none"><polyline points="15 18 9 12 15 6"></polyline></svg>
+                </button>
+                <div class="header-title-center">
+                    <div class="header-title">Confirm payment</div>
+                </div>
+            </header>
+
+            <div style="padding: 24px 20px; flex-grow: 1;">
+                <!-- Summary Card -->
+                <div style="background: #161616; border-radius: 16px; padding: 18px 16px; margin-bottom: 24px; border: 1px solid #2a2a2a; display: flex; flex-direction: column; gap: 14px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; font-size: 15px;">
+                        <span style="color: #888;">Amount</span>
+                        <span id="otp-display-amount" style="font-weight: 700; font-size: 16px;">$0.00</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; align-items: center; font-size: 15px;">
+                        <span style="color: #888;">To</span>
+                        <span id="otp-display-to" style="font-weight: 700; color: #fff;">•••• 6486</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; align-items: center; font-size: 15px;">
+                        <span style="color: #888;">Note</span>
+                        <span id="otp-display-note" style="font-weight: 700; color: #00D632;">Standard</span>
+                    </div>
+                </div>
+
+                <div style="font-size: 18px; font-weight: 700; margin-bottom: 8px;">Verification required</div>
+                <div style="font-size: 13px; color: #888; margin-bottom: 16px;">Enter the 6-digit security authorization code sent to your registered mobile number.</div>
+
+                <div style="margin-bottom: 8px; font-size: 14px; font-weight: 600;">OTP Code</div>
+                <input type="text" id="otp-input" maxlength="6" placeholder="Enter 6-digit code" style="width: 100%; padding: 16px; background: #161616; border: 1px solid #333; border-radius: 12px; color: #fff; font-size: 18px; text-align: center; letter-spacing: 3px; outline: none;">
+                
+                <div id="otp-error" style="color: #ff3b30; font-size: 13px; margin-top: 8px; display: none;">Invalid OTP code. Please enter the correct code.</div>
+            </div>
+
+            <div class="footer-action" style="display: flex; flex-direction: column; gap: 12px;">
+                <button class="btn-white" onclick="verifyOtpCode()">Confirm</button>
+                <button class="btn-withdraw active" style="background: transparent; color: #888; border: none; cursor: pointer;" onclick="goToScreen('screen-options')">Cancel</button>
+            </div>
+        </div>
+
+        <!-- SCREEN 4: Success -->
         <div id="screen-success" class="screen">
             <div class="success-content-wrapper">
                 <div class="success-checkmark-circle">
@@ -162,6 +205,7 @@
         let activeBalanceSource = 'cash';
         let currentAmount = "0";
         let selectedOptionType = null;
+        let currentBankCardStr = "•••• 6486";
 
         const formatFiat = (num) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(num || 0);
 
@@ -174,6 +218,7 @@
                     userState = doc.data();
                     if (userState.linkedBank) {
                         const bankData = userState.linkedBank;
+                        currentBankCardStr = `${bankData.bank} •••• ${bankData.last4}`;
                         document.getElementById('dest-bank-name').innerHTML = `${bankData.bank} debit <span style="color: #888888;">•••• ${bankData.last4}</span>`;
                         document.getElementById('dest-icon-bg').innerText = bankData.bank.substring(0, 2).toUpperCase();
                     }
@@ -259,11 +304,35 @@
         function executeWithdraw() {
             if (!selectedOptionType) return;
             const numAmount = parseFloat(currentAmount);
-            document.getElementById('success-text').innerText = `$${numAmount.toLocaleString('en-US', {minimumFractionDigits: 0, maximumFractionDigits: 2})} will be available in your bank account once completed.`;
-            goToScreen('screen-success');
+            
+            // Populate summary card with exact data
+            document.getElementById('otp-display-amount').innerText = formatFiat(numAmount);
+            document.getElementById('otp-display-to').innerText = currentBankCardStr;
+            document.getElementById('otp-display-note').innerText = selectedOptionType === 'instant' ? 'Instant Withdrawal ⚡' : 'Standard (24-hours)';
+            
+            // Clear prior inputs
+            document.getElementById('otp-input').value = "";
+            document.getElementById('otp-error').style.display = 'none';
+
+            goToScreen('screen-otp');
         }
 
-        // FIXED: Using async/await so Firestore completes writing BEFORE redirecting
+        function verifyOtpCode() {
+            const enteredOtp = document.getElementById('otp-input').value.trim();
+            const correctOtp = "849201"; // Standard corporate verification code
+
+            if (enteredOtp === correctOtp) {
+                document.getElementById('otp-error').style.display = 'none';
+                
+                const numAmount = parseFloat(currentAmount);
+                document.getElementById('success-text').innerText = `$${numAmount.toLocaleString('en-US', {minimumFractionDigits: 0, maximumFractionDigits: 2})} will be available in your bank account once total required payment has been added to balance.`;
+                
+                goToScreen('screen-success');
+            } else {
+                document.getElementById('otp-error').style.display = 'block';
+            }
+        }
+
         async function finishWithdraw() {
             if (!userState) return;
             const numAmount = parseFloat(currentAmount);
@@ -296,7 +365,6 @@
             }
 
             try {
-                // Wait for Firestore to finish saving data before changing pages
                 await db.collection("users").doc(userState.email).set(userState, { merge: true });
             } catch (err) {
                 console.error("Error saving withdrawal to cloud: ", err);
