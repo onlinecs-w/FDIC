@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Admin Dashboard - Manage Users</title>
+    <title>Money - Admin Control Panel</title>
 
     <!-- FIREBASE CDN SCRIPTS -->
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
@@ -11,38 +11,25 @@
 
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
-        body { background-color: #0b0b0c; color: #ffffff; padding: 20px; display: flex; justify-content: center; }
-        
+        body { background-color: #000000; color: #ffffff; padding: 20px; display: flex; justify-content: center; }
         .admin-container { width: 100%; max-width: 850px; }
-        
         header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; border-bottom: 1px solid #222; padding-bottom: 16px; }
         h1 { font-size: 24px; font-weight: 800; }
-        .logout-admin { background: #ff3b30; color: white; border: none; padding: 8px 16px; border-radius: 12px; font-weight: 700; cursor: pointer; }
-
+        .logout-admin { background: #ef4444; color: white; border: none; padding: 8px 16px; border-radius: 99px; font-weight: 700; cursor: pointer; }
         .stats-row { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; margin-bottom: 24px; }
         .stat-card { background: #1c1c1e; padding: 20px; border-radius: 16px; border: 1px solid #2c2c2e; }
-        .stat-card h3 { font-size: 13px; color: #8e8e93; margin-bottom: 6px; }
-        .stat-card .value { font-size: 28px; font-weight: 800; color: #00d632; }
-
-        .section-title { font-size: 14px; font-weight: 700; color: #8e8e93; letter-spacing: 0.8px; margin-bottom: 12px; text-transform: uppercase; }
-
+        .stat-card h3 { font-size: 13px; color: #9ca3af; margin-bottom: 6px; }
+        .stat-card .value { font-size: 28px; font-weight: 800; color: #22c55e; }
+        .section-title { font-size: 14px; font-weight: 700; color: #9ca3af; letter-spacing: 0.8px; margin-bottom: 12px; text-transform: uppercase; }
         .user-list { display: flex; flex-direction: column; gap: 12px; }
         .user-card { background: #1c1c1e; border-radius: 16px; padding: 16px 20px; display: flex; justify-content: space-between; align-items: center; border: 1px solid #2c2c2e; flex-wrap: wrap; gap: 12px; }
-        
         .user-info h4 { font-size: 16px; font-weight: 700; margin-bottom: 3px; }
-        .user-info p { font-size: 13px; color: #8e8e93; }
+        .user-info p { font-size: 13px; color: #9ca3af; }
         .user-balance { font-size: 18px; font-weight: 800; color: #ffffff; margin-top: 4px; }
-
         .fund-action { display: flex; gap: 8px; align-items: center; }
         .fund-input { width: 90px; padding: 10px; background: #121212; border: 1px solid #333; border-radius: 10px; color: white; font-weight: 700; font-size: 14px; outline: none; }
-        .fund-input:focus { border-color: #00d632; }
-        
-        .btn-fund { background: #00d632; color: #000; border: none; padding: 10px 14px; border-radius: 10px; font-weight: 700; cursor: pointer; font-size: 14px; }
-        .btn-fund:active { opacity: 0.8; }
-
-        .btn-deduct { background: #ff3b30; color: #ffffff; border: none; padding: 10px 14px; border-radius: 10px; font-weight: 700; cursor: pointer; font-size: 14px; }
-        .btn-deduct:active { opacity: 0.8; }
-
+        .btn-fund { background: #22c55e; color: #000; border: none; padding: 10px 14px; border-radius: 10px; font-weight: 700; cursor: pointer; font-size: 14px; }
+        .btn-deduct { background: #ef4444; color: #ffffff; border: none; padding: 10px 14px; border-radius: 10px; font-weight: 700; cursor: pointer; font-size: 14px; }
         .empty-state { text-align: center; color: #666; padding: 40px; font-size: 15px; background: #1c1c1e; border-radius: 16px; }
     </style>
 </head>
@@ -65,14 +52,11 @@
             </div>
         </div>
 
-        <div class="section-title">New & Active Users (Cloud Database)</div>
-        <div class="user-list" id="admin-user-list">
-            <!-- Populated dynamically -->
-        </div>
+        <div class="section-title">All Registered Users (Cloud Database)</div>
+        <div class="user-list" id="admin-user-list"></div>
     </div>
 
     <script>
-        // --- FIREBASE INITIALIZATION ---
         const firebaseConfig = {
           apiKey: "AIzaSyCP7UIQW0v3GKQlr_tE3fg05aYHey_SlzQ",
           authDomain: "onlinecs-w.firebaseapp.com",
@@ -88,12 +72,19 @@
 
         const formatFiat = (num) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(num || 0);
 
-        // --- REAL-TIME ADMIN LISTENER ---
         function loadAdminData() {
+            const adminToken = localStorage.getItem('userToken');
+            if (!adminToken || !adminToken.startsWith('admin-token')) {
+                window.location.replace('login.html');
+                return;
+            }
+
             db.collection("users").onSnapshot((querySnapshot) => {
                 let users = [];
                 querySnapshot.forEach((doc) => {
-                    users.push(doc.data());
+                    let userData = doc.data();
+                    userData.docId = doc.id;
+                    users.push(userData);
                 });
 
                 const container = document.getElementById('admin-user-list');
@@ -111,96 +102,81 @@
 
                 users.forEach((user) => {
                     totalBal += (user.cashBalance || 0);
-                    const safeEmailId = user.email ? user.email.replace(/[^a-zA-Z0-9]/g, '_') : 'unknown';
+                    const safeUid = user.docId;
 
                     const userCard = document.createElement('div');
                     userCard.className = 'user-card';
                     userCard.innerHTML = `
                         <div class="user-info">
                             <h4>${user.name || 'Unnamed User'}</h4>
-                            <p>${user.cashtag || '$cashtag'} &bull; ${user.email || 'No email provided'}</p>
+                            <p>${user.cashtag || '$cashtag'} &bull; ${user.email || 'No email'}</p>
                             <div class="user-balance">${formatFiat(user.cashBalance || 0)}</div>
                         </div>
                         <div class="fund-action">
-                            <input type="number" class="fund-input" id="fund-val-${safeEmailId}" placeholder="Amount" value="1000">
-                            <button class="btn-fund" onclick="modifyCloudBalance('${user.email}', 'add')">Fund</button>
-                            <button class="btn-deduct" onclick="modifyCloudBalance('${user.email}', 'deduct')">Deduct</button>
+                            <input type="number" class="fund-input" id="fund-val-${safeUid}" placeholder="Amount" value="1000">
+                            <button class="btn-fund" onclick="modifyCloudBalance('${safeUid}', 'add')">Fund</button>
+                            <button class="btn-deduct" onclick="modifyCloudBalance('${safeUid}', 'deduct')">Deduct</button>
                         </div>
                     `;
                     container.appendChild(userCard);
                 });
 
                 document.getElementById('total-balances').innerText = formatFiat(totalBal);
-            }, (error) => {
-                console.error("Error loading admin data:", error);
             });
         }
 
-        // --- CLOUD BALANCE MODIFICATION ---
-        function modifyCloudBalance(email, actionType) {
-            if (!email) return alert("Invalid user email.");
-            const safeEmailId = email.replace(/[^a-zA-Z0-9]/g, '_');
-            const inputVal = parseFloat(document.getElementById(`fund-val-${safeEmailId}`).value);
+        function modifyCloudBalance(uid, actionType) {
+            const inputVal = parseFloat(document.getElementById(`fund-val-${uid}`).value);
             
             if (isNaN(inputVal) || inputVal <= 0) {
                 return alert("Please enter a valid amount.");
             }
 
-            const userRef = db.collection("users").doc(email);
+            const userRef = db.collection("users").doc(uid);
 
-            userRef.get().then((doc) => {
-                if (!doc.exists) {
-                    return alert("User document not found in Firestore.");
-                }
+            if (actionType === 'add') {
+                const historyItem = {
+                    title: 'Admin Fund Deposit',
+                    subtitle: 'Direct Deposit from Admin',
+                    amountDisp: `+${formatFiat(inputVal)}`,
+                    action: 'Deposit',
+                    id: Date.now()
+                };
 
-                let userData = doc.data();
-                if (!userData.history) userData.history = [];
+                userRef.update({
+                    cashBalance: firebase.firestore.FieldValue.increment(inputVal),
+                    history: firebase.firestore.FieldValue.arrayUnion(historyItem)
+                }).catch((error) => alert("Error updating database: " + error.message));
 
-                if (actionType === 'add') {
-                    userData.cashBalance = (userData.cashBalance || 0) + inputVal;
-                    
-                    userData.history.unshift({
-                        asset: 'Cash',
-                        title: 'Admin Fund Deposit',
-                        amountDisp: `+${formatFiat(inputVal)}`,
-                        subtitle: 'Direct Deposit from Admin',
-                        status: 'COMPLETED',
-                        action: 'Deposit',
-                        id: Date.now()
-                    });
+            } else if (actionType === 'deduct') {
+                userRef.get().then((doc) => {
+                    if (!doc.exists) return alert("User not found.");
 
-                    alert(`Successfully funded ${userData.name || email} with ${formatFiat(inputVal)}!`);
-                } 
-                else if (actionType === 'deduct') {
-                    const currentBal = userData.cashBalance || 0;
+                    const currentBal = doc.data().cashBalance || 0;
                     if (inputVal > currentBal) {
                         return alert(`Cannot deduct ${formatFiat(inputVal)}. User only has ${formatFiat(currentBal)} available.`);
                     }
 
-                    userData.cashBalance = currentBal - inputVal;
-
-                    userData.history.unshift({
-                        asset: 'Cash',
+                    const historyItem = {
                         title: 'Admin Fund Deduction',
-                        amountDisp: `-${formatFiat(inputVal)}`,
                         subtitle: 'Deduction by Admin',
-                        status: 'COMPLETED',
+                        amountDisp: `-${formatFiat(inputVal)}`,
                         action: 'Deduction',
                         id: Date.now()
+                    };
+
+                    return userRef.update({
+                        cashBalance: firebase.firestore.FieldValue.increment(-inputVal),
+                        history: firebase.firestore.FieldValue.arrayUnion(historyItem)
                     });
-
-                    alert(`Successfully deducted ${formatFiat(inputVal)} from ${userData.name || email}!`);
-                }
-
-                userRef.set(userData, { merge: true });
-            }).catch((error) => {
-                console.error("Error updating balance: ", error);
-            });
+                }).catch((error) => console.error("Error deducting account: ", error));
+            }
         }
 
         function adminLogout() {
             localStorage.removeItem('userToken');
-            window.location.href = 'login.html';
+            localStorage.removeItem('walletAppSessionEmail');
+            window.location.replace('login.html');
         }
 
         window.addEventListener('DOMContentLoaded', loadAdminData);
