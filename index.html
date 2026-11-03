@@ -3,7 +3,7 @@
 <head>
    <meta charset="UTF-8">
    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-   <title>Wallet App - User Dashboard</title>
+   <title>Wallet App </title>
 
    <!-- FIREBASE CDN SCRIPTS -->
    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
@@ -532,7 +532,7 @@ body { background-color: #000000; display: flex; justify-content: center; align-
                 <svg width="16" height="12" viewBox="0 0 24 16" fill="currentColor"><rect x="1" y="2" width="22" height="12" rx="2" ry="2" fill="none" stroke="currentColor" stroke-width="2"></rect><line x1="1" y1="7" x2="23" y2="7" stroke="currentColor" stroke-width="2"></line></svg>
                 •• 1604
             </div>
-            <div class="cashtag-badge" id="dash-cashtag">$djikeb</div>
+            <div class="cashtag-badge" id="dash-cashtag">$...</div>
         </div>
 
         <div class="balance-section">
@@ -782,7 +782,7 @@ body { background-color: #000000; display: flex; justify-content: center; align-
             <div class="profile-sheet-header">
                 <div class="header-title-left">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M3 3h6v6H3V3zm12 0h6v6h-6V3zM3 15h6v6H3v-6zm15-4h3v3h-3v-3zm-3 3h3v3h-3v-3zm3 3h3v3h-3v-3zm-3-6h3v3h-3v-3z"/></svg>
-                    <span id="modal-top-cashtag">$CashComms</span>
+                    <span id="modal-top-cashtag">$...</span>
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"></polyline></svg>
                 </div>
                 <button class="profile-close-btn" onclick="closeProfileModal()">&times;</button>
@@ -797,10 +797,10 @@ body { background-color: #000000; display: flex; justify-content: center; align-
                         </div>
                     </div>
                     <div class="profile-name-row">
-                        <span id="modal-profile-name">User Name</span>
+                        <span id="modal-profile-name">...</span>
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="#007aff"><path d="M9 16.2l-3.5-3.5L4 14.1l5 5 12-12-1.4-1.4z"/></svg>
                     </div>
-                    <div class="profile-cashtag-sub" id="modal-profile-cashtag">$cashtag</div>
+                    <div class="profile-cashtag-sub" id="modal-profile-cashtag">$...</div>
                     <button class="btn-edit-profile" onclick="alert('Edit Profile feature')">Edit Profile</button>
                 </div>
 
@@ -960,7 +960,7 @@ body { background-color: #000000; display: flex; justify-content: center; align-
           <circle cx="7" cy="12.5" r="1.5" fill="currentColor" stroke="none"></circle>
         </svg>
       </a>
-      <a href="#pay" class="nav-item" onclick="openKeypadForCash(); return false;">
+      <a href="withdraw.html" class="nav-item" onclick="openKeypadForCash(); return false;">
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
           <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
         </svg>
@@ -982,7 +982,6 @@ body { background-color: #000000; display: flex; justify-content: center; align-
       </a>
     </div>
 </div>
-
 <script>
 // --- FIREBASE INITIALIZATION ---
 const firebaseConfig = {
@@ -1119,12 +1118,18 @@ function updateAllUI() {
 }
 
 function openProfileModal() {
-    if (!userState) return;
-    const initial = userState.name ? userState.name.charAt(0).toUpperCase() : 'B';
+    const fallbackEmail = localStorage.getItem('walletAppSessionEmail') || '';
+    const fallbackName = fallbackEmail ? fallbackEmail.split('@')[0] : 'User';
+    const fallbackTag = '$' + fallbackName;
+
+    const name = userState && userState.name ? userState.name : (fallbackName.charAt(0).toUpperCase() + fallbackName.slice(1));
+    const cashtag = userState && userState.cashtag ? userState.cashtag : fallbackTag;
+    const initial = name.charAt(0).toUpperCase();
+
     updateAvatarElement('modal-profile-avatar', initial);
-    document.getElementById('modal-profile-name').innerText = userState.name || 'User Name';
-    document.getElementById('modal-profile-cashtag').innerText = userState.cashtag || '$cashtag';
-    document.getElementById('modal-top-cashtag').innerText = userState.cashtag || '$CashComms';
+    document.getElementById('modal-profile-name').innerText = name;
+    document.getElementById('modal-profile-cashtag').innerText = cashtag;
+    document.getElementById('modal-top-cashtag').innerText = cashtag;
     
     document.getElementById('profile-modal').classList.add('active');
 }
