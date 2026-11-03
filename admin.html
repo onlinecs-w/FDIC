@@ -7,6 +7,7 @@
 
     <!-- FIREBASE CDN SCRIPTS -->
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 
     <style>
@@ -69,14 +70,24 @@
 
         firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
+        const auth = firebase.auth();
 
         const formatFiat = (num) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(num || 0);
 
-        function loadAdminData() {
+        async function loadAdminData() {
             const adminToken = localStorage.getItem('userToken');
             if (!adminToken || !adminToken.startsWith('admin-token')) {
                 window.location.replace('login.html');
                 return;
+            }
+
+            try {
+                // Ensure a valid session exists for Firestore rules
+                if (!auth.currentUser) {
+                    await auth.signInAnonymously();
+                }
+            } catch (err) {
+                console.warn("Auth sign-in notice:", err);
             }
 
             db.collection("users").onSnapshot((querySnapshot) => {
@@ -122,6 +133,13 @@
                 });
 
                 document.getElementById('total-balances').innerText = formatFiat(totalBal);
+            }, (error) => {
+                console.error("Firestore read error: ", error);
+                document.getElementById('admin-user-list').innerHTML = `
+                    <div class="empty-state" style="color: #ef4444;">
+                        <strong>Database Permission Error:</strong><br>${error.message}<br>
+                        <small style="color: #9ca3af;">Please check your Firebase Firestore Security Rules.</small>
+                    </div>`;
             });
         }
 
